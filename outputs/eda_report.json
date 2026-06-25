@@ -1,0 +1,36 @@
+{
+  "shape": [
+    1000,
+    16
+  ],
+  "missing": {
+    "book_id": 0,
+    "title": 0,
+    "price_incl_tax": 0,
+    "price_excl_tax": 0,
+    "tax": 0,
+    "stock_count": 0,
+    "rating": 0,
+    "category_id": 0,
+    "upc": 0,
+    "product_type": 0,
+    "num_reviews": 0,
+    "description": 2,
+    "image_url": 0,
+    "page_url": 0,
+    "crawled_at": 0,
+    "category": 0
+  },
+  "rating_distribution": {
+    "1": 226,
+    "2": 196,
+    "3": 203,
+    "4": 179,
+    "5": 196
+  },
+  "price_mean": 35.07,
+  "price_std": 14.45,
+  "category_count": 50,
+  "outlier_count": 0,
+  "price_rating_corr": 0.0282
+}
