@@ -1,4 +1,4 @@
-name: Data Pipeline CI
+name: Data Science Pipeline CI
 
 on:
   push:
@@ -20,5 +20,26 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run pipeline
+      - name: Run Phase 2 pipeline (load -> preprocess -> feature engineering)
         run: python pipeline.py
+
+      - name: Run Phase 3 training pipeline (split -> train -> select best model -> evaluate)
+        run: python pipeline_train.py
+
+      - name: Run Phase 3 prediction pipeline (predict -> save to DB)
+        run: python pipeline_predict.py
+
+      - name: Upload model + evaluation artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-and-eval-artifacts
+          path: |
+            outputs/models/
+            outputs/evaluation_report.json
+            outputs/predictions.csv
+
+      - name: Upload updated database
+        uses: actions/upload-artifact@v4
+        with:
+          name: dataset-db
+          path: database/dataset.db

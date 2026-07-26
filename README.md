@@ -1,10 +1,13 @@
-# Books to Scrape — Data Science Project (Phase 2)
+‍# Books to Scrape — Data Science Project (Phase 2)
 
 **Dataset:** Books to Scrape (https://books.toscrape.com)
 **Collection:** Web scraping — requests + BeautifulSoup (self-crawled)
 **Records:** 1000 books | 50 categories
 **Target:** `rating` (1–5) — Regression / `rating_class` (0/1) — Classification
 
+
+## GitHub Repository
+https://github.com/zeynabhasani/Data-Science-project
 ---
 
 ## Project Structure
@@ -122,4 +125,127 @@ Steps executed:
 GitHub Actions runs on every push to `main`:
 1. Setup Python 3.12
 2. `pip install -r requirements.txt`
-3. `python pipeline.py`
+3. `python pipeline.py` (Phase 2), then `python pipeline_train.py` and `python pipeline_predict.py` (Phase 3)
+4. Uploads trained models, evaluation report, and predictions as build artifacts
+
+---
+
+# Phase 3 — Modeling, Evaluation & Pipeline Automation
+
+## Updated Project Structure (additions in **bold**)
+
+```
+Project_P3/
+├── database/
+│   ├── books_raw.csv
+│   └── dataset.db                  ← now also has a `predictions` table
+├── scripts/
+│   ├── database_connection.py
+│   ├── import_to_db.py
+│   ├── load_data.py
+│   ├── preprocess.py                ← now also saves encoder/scaler + preprocess_inference()
+│   ├── feature_engineering.py       ← now also saves medians + engineer_features_inference()
+│   ├── **split_data.py**            ← train/val/test split (70/15/15, stratified)
+│   ├── **train_model.py**           ← Section 1 & 2: model selection, training, evaluation
+│   ├── **make_predictions.py**      ← Section 3: prediction pipeline (load model, predict)
+│   ├── **save_predictions.py**      ← Section 3: writes predictions to the database
+│   └── **mlflow_train.py**          ← Section 4 (bonus): MLflow-tracked training
+├── outputs/
+│   ├── ... (Phase 2 outputs)
+│   ├── **splits/**{train,val,test}.csv
+│   ├── **models/**best_classifier.pkl, best_regressor.pkl, category_encoder.pkl, scaler.pkl, feature_stats.json
+│   ├── **evaluation_report.json**   ← full model comparison + test metrics
+│   └── **predictions.csv**          ← local snapshot of predictions
+├── **pipeline_train.py**            ← TRAINING pipeline: single-command automation
+├── **pipeline_predict.py**          ← PREDICTION pipeline: single-command automation
+├── .github/workflows/pipeline.yml   ← CI/CD, now runs both Phase 3 pipelines
+├── **video_link.txt**               ← Google Drive links for final video + slides
+├── pipeline.py                      ← Phase 2 pipeline (unchanged)
+├── requirements.txt
+└── README.md
+```
+
+## How to Run (Phase 3)
+
+```bash
+pip install -r requirements.txt
+
+# 1) Train: loads data, preprocesses, engineers features, splits, selects & trains best model
+python pipeline_train.py
+
+# 2) Predict: reuses saved model + preprocessing artifacts, scores data, saves to DB
+python pipeline_predict.py
+
+# (Bonus) MLflow experiment tracking
+pip install mlflow
+python scripts/mlflow_train.py
+mlflow ui   # http://127.0.0.1:5000
+```
+
+## Section 1 — Model Selection & Data Splitting
+
+**Data splitting:** 70% train / 15% validation / 15% test, stratified on `rating_class` to preserve the ~58/42 class balance in every split (`scripts/split_data.py`).
+
+**Data-leakage fix:** `price_per_rating` (created in Phase 2 as `price_incl_tax / rating`) directly encodes the target and is **dropped before modeling**. Final feature set: **114 columns** (numeric, category encoding, price buckets, 100 TF-IDF terms).
+
+**Models tested** (coordinated choice — both a classification and a regression formulation of the task were evaluated, since the dataset supports both target definitions):
+
+| Task | Models tested |
+|---|---|
+| Classification (`rating_class`, 0/1) | Logistic Regression, KNN, SVM (RBF/linear), Random Forest, Gradient Boosting (XGBoost when available) |
+| Regression (`rating`, 1–5) | Linear Regression, Ridge, Random Forest, Gradient Boosting (XGBoost when available) |
+
+> Note on XGBoost: the code tries `import xgboost` and uses `XGBClassifier`/`XGBRegressor` automatically when it's installed (see `requirements.txt`). In offline/sandboxed environments without internet access, it falls back to scikit-learn's `GradientBoostingClassifier`/`Regressor`, which serves the same "boosted trees" role for comparison purposes.
+
+Scale-sensitive models (Logistic Regression, KNN, SVM, Ridge) are wrapped in a `StandardScaler` pipeline, since raw feature magnitudes range from TF-IDF values (<1) to `desc_length` (up to ~8,600).
+
+## Section 2 — Training, Tuning & Evaluation
+
+Each candidate model was tuned with **5-fold (stratified) cross-validation + `GridSearchCV`** on the training set, then the winning model per task was refit on train+validation and evaluated once on the held-out test set.
+
+### Model comparison (5-fold CV on train set)
+
+| Classification model | CV F1 | | Regression model | CV RMSE |
+|---|---|---|---|---|
+| Logistic Regression | 0.6227 | | Linear Regression | 1.6470 |
+| KNN | 0.5546 | | Ridge | 1.5383 |
+| SVM (RBF) | 0.6892 | | Random Forest | **1.4263** |
+| **Random Forest** | **0.7078** | | Gradient Boosting | 1.4414 |
+| Gradient Boosting | 0.6871 | | | |
+
+**Selected models:** Random Forest for both tasks (`n_estimators=200/400, max_depth=8`).
+
+### Final test-set metrics
+
+| Classification (`rating_class`) | Value | Regression (`rating`) | Value |
+|---|---|---|---|
+| Accuracy | 0.580 | MAE | 1.257 |
+| Precision | 0.590 | RMSE | 1.456 |
+| Recall | 0.908 | R² | **-0.026** |
+| F1 | 0.715 | | |
+| ROC-AUC | **0.513** | | |
+
+### Analysis / business interpretation
+
+The classification model reaches an F1 of ~0.71, but this is misleading on its own: **accuracy (0.58) matches the class prevalence** (58% of books are rated ≥3), and **ROC-AUC ≈ 0.51** is statistically indistinguishable from a random classifier. The regression model's **R² is slightly negative**, meaning it performs *worse* than simply predicting the mean rating for every book. Both results — consistent with the Phase 2 EDA finding of a near-zero price–rating correlation (r = 0.028) — point to the same conclusion: **in the Books-to-Scrape dataset, `rating` is not meaningfully predictable from price, stock, category, or description text.** This is a known characteristic of this demo/practice website (ratings are essentially placeholder/random values, not real reader reviews), not a flaw in the modeling pipeline. The engineering value of this phase is therefore in building a *correct, leakage-free, reproducible* pipeline — the negative result itself is a legitimate and useful finding: it shows that no amount of model complexity can manufacture a signal that isn't in the data, and it would flag to a real stakeholder that this feature set cannot support a rating-prediction product without collecting better signals (e.g. genuine review text, sales history, or user behavior data).
+
+**Limitations & future work:** with real review data instead of a randomly-assigned rating field, the same TF-IDF + tabular pipeline built here would likely produce a much more meaningful model. Future iterations could also try transformer-based text embeddings, collect the actual "number of reviews," or reframe the task entirely (e.g., predicting price from category/description, where Phase 2 EDA suggests more structure may exist).
+
+## Section 3 — Pipeline Integration (End-to-End Automation)
+
+**Automation method chosen:** GitHub Actions CI/CD (already set up in Phase 2), extended to run both new Phase 3 pipelines on every push.
+
+**Two separate pipelines**, each runnable with a single command:
+
+- **`pipeline_train.py`** — `import_to_db.py` → `split_data.py` (load → preprocess → feature-engineer → split) → `train_model.py` (select, tune, train, evaluate, save best model + fitted preprocessing artifacts).
+- **`pipeline_predict.py`** — `save_predictions.py` (load data → `preprocess_inference()` / `engineer_features_inference()` reusing the saved encoder/scaler/TF-IDF vectorizer/medians, **no re-fitting** → load the already-trained model → predict → write results to the `predictions` table in `database/dataset.db`).
+
+The trained model is saved once (`outputs/models/best_classifier.pkl`, `best_regressor.pkl`) and only ever *loaded* (never retrained) inside the prediction pipeline, per the assignment's requirement.
+
+## Section 4 — MLflow (Bonus)
+
+`scripts/mlflow_train.py` reproduces the same model-selection loop as `train_model.py`, but logs every candidate's parameters and CV score as an individual MLflow run, then logs the winning model per task (parameters, test metrics, and the model artifact itself via `mlflow.sklearn.log_model`) for versioning and later reload. Run with `pip install mlflow && python scripts/mlflow_train.py`, then `mlflow ui`.
+
+## Section 5 — Final Presentation Video
+
+See `video_link.txt` for the Google Drive links to the final video (≤15 min) and slides.

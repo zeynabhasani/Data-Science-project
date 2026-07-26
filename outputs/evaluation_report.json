@@ -1,0 +1,203 @@
+{
+  "feature_columns": [
+    "price_incl_tax",
+    "stock_count",
+    "category_encoded",
+    "price_incl_tax_scaled",
+    "stock_count_scaled",
+    "desc_length",
+    "desc_word_count",
+    "stock_price_ratio",
+    "is_expensive",
+    "is_high_stock",
+    "bucket_cheap",
+    "bucket_expensive",
+    "bucket_mid",
+    "bucket_premium",
+    "tfidf_age",
+    "tfidf_america",
+    "tfidf_american",
+    "tfidf_art",
+    "tfidf_author",
+    "tfidf_away",
+    "tfidf_beautiful",
+    "tfidf_best",
+    "tfidf_bestselling",
+    "tfidf_bestselling author",
+    "tfidf_book",
+    "tfidf_change",
+    "tfidf_children",
+    "tfidf_city",
+    "tfidf_come",
+    "tfidf_comes",
+    "tfidf_dark",
+    "tfidf_day",
+    "tfidf_death",
+    "tfidf_different",
+    "tfidf_does",
+    "tfidf_family",
+    "tfidf_father",
+    "tfidf_finds",
+    "tfidf_friend",
+    "tfidf_friends",
+    "tfidf_girl",
+    "tfidf_god",
+    "tfidf_good",
+    "tfidf_great",
+    "tfidf_heart",
+    "tfidf_help",
+    "tfidf_high",
+    "tfidf_history",
+    "tfidf_home",
+    "tfidf_human",
+    "tfidf_it\u00e2",
+    "tfidf_journey",
+    "tfidf_just",
+    "tfidf_know",
+    "tfidf_known",
+    "tfidf_knows",
+    "tfidf_life",
+    "tfidf_like",
+    "tfidf_little",
+    "tfidf_live",
+    "tfidf_lives",
+    "tfidf_living",
+    "tfidf_ll",
+    "tfidf_long",
+    "tfidf_love",
+    "tfidf_make",
+    "tfidf_man",
+    "tfidf_men",
+    "tfidf_modern",
+    "tfidf_mother",
+    "tfidf_music",
+    "tfidf_new",
+    "tfidf_new york",
+    "tfidf_night",
+    "tfidf_novel",
+    "tfidf_offers",
+    "tfidf_old",
+    "tfidf_past",
+    "tfidf_people",
+    "tfidf_perfect",
+    "tfidf_personal",
+    "tfidf_place",
+    "tfidf_power",
+    "tfidf_powerful",
+    "tfidf_read",
+    "tfidf_readers",
+    "tfidf_recipes",
+    "tfidf_school",
+    "tfidf_secret",
+    "tfidf_secrets",
+    "tfidf_series",
+    "tfidf_she\u00e2",
+    "tfidf_stories",
+    "tfidf_story",
+    "tfidf_takes",
+    "tfidf_things",
+    "tfidf_thought",
+    "tfidf_time",
+    "tfidf_times",
+    "tfidf_true",
+    "tfidf_truth",
+    "tfidf_want",
+    "tfidf_war",
+    "tfidf_way",
+    "tfidf_woman",
+    "tfidf_women",
+    "tfidf_work",
+    "tfidf_world",
+    "tfidf_year",
+    "tfidf_year old",
+    "tfidf_years",
+    "tfidf_york",
+    "tfidf_york times",
+    "tfidf_young"
+  ],
+  "n_features": 114,
+  "classification": {
+    "target": "rating_class",
+    "cv_comparison": {
+      "LogisticRegression": {
+        "cv_score": 0.6227,
+        "best_params": {
+          "clf__C": 0.1
+        }
+      },
+      "KNN": {
+        "cv_score": 0.5546,
+        "best_params": {
+          "clf__n_neighbors": 21
+        }
+      },
+      "SVM": {
+        "cv_score": 0.6892,
+        "best_params": {
+          "clf__C": 1.0,
+          "clf__kernel": "rbf"
+        }
+      },
+      "RandomForest": {
+        "cv_score": 0.7078,
+        "best_params": {
+          "max_depth": 8,
+          "n_estimators": 200
+        }
+      },
+      "XGBoost": {
+        "cv_score": 0.6554,
+        "best_params": {
+          "learning_rate": 0.05,
+          "max_depth": 3,
+          "n_estimators": 200
+        }
+      }
+    },
+    "best_model": "RandomForest",
+    "test_metrics": {
+      "accuracy": 0.58,
+      "precision": 0.5896,
+      "recall": 0.908,
+      "f1": 0.7149,
+      "roc_auc": 0.5129
+    }
+  },
+  "regression": {
+    "target": "rating",
+    "cv_comparison": {
+      "LinearRegression": {
+        "cv_score": -1.6069,
+        "best_params": {}
+      },
+      "Ridge": {
+        "cv_score": -1.5383,
+        "best_params": {
+          "reg__alpha": 10.0
+        }
+      },
+      "RandomForest": {
+        "cv_score": -1.4263,
+        "best_params": {
+          "max_depth": 8,
+          "n_estimators": 400
+        }
+      },
+      "XGBoost": {
+        "cv_score": -1.4481,
+        "best_params": {
+          "learning_rate": 0.05,
+          "max_depth": 3,
+          "n_estimators": 200
+        }
+      }
+    },
+    "best_model": "RandomForest",
+    "test_metrics": {
+      "mae": 1.2573,
+      "rmse": 1.4558,
+      "r2": -0.0259
+    }
+  },
+  "final_model_choice": "classification (rating_class) with RandomForest"
+}

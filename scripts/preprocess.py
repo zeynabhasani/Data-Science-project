@@ -2,13 +2,15 @@ import pandas as pd
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler, LabelEncoder
 from pathlib import Path
-import sys, json
+import sys, json, pickle
 
 sys.path.insert(0, str(Path(__file__).parent))
 from load_data import load_books
 
 OUTPUT_DIR = Path(__file__).parent.parent / "outputs"
 OUTPUT_DIR.mkdir(exist_ok=True)
+ARTIFACT_DIR = OUTPUT_DIR / "models"
+ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
 
 def run_eda(df):
     print("\n" + "="*55)
@@ -85,6 +87,15 @@ def preprocess(df):
     df[[f"{c}_scaled" for c in scale_cols]] = scaler.fit_transform(df[scale_cols])
     print(f"  MinMax-scaled: {scale_cols}")
 
+    # Persist the fitted encoder/scaler so the PREDICTION pipeline can apply
+    # the exact same (already-fitted) transformation to new/test data instead
+    # of re-fitting on it (which would cause train/inference inconsistency).
+    with open(ARTIFACT_DIR / "category_encoder.pkl", "wb") as f:
+        pickle.dump(le, f)
+    with open(ARTIFACT_DIR / "scaler.pkl", "wb") as f:
+        pickle.dump(scaler, f)
+    print(f"  ✅ Saved fitted encoder/scaler → outputs/models/category_encoder.pkl, scaler.pkl")
+
     df["rating_class"] = (df["rating"] >= 3).astype(int)
     print(f"  Target 'rating' (1-5): regression")
     print(f"  Target 'rating_class' (0/1, ≥3=1): classification | dist={df['rating_class'].value_counts().to_dict()}")
@@ -93,6 +104,50 @@ def preprocess(df):
     df.to_csv(out, index=False, encoding="utf-8-sig")
     print(f"\n✅ Saved → {out}  ({len(df)} rows × {len(df.columns)} cols)")
     return df
+
+def preprocess_inference(df: pd.DataFrame) -> pd.DataFrame:
+    """Prediction-pipeline version of preprocess(): applies the SAME cleaning
+    steps but re-uses the encoder/scaler fitted during training (loaded from
+    outputs/models/) instead of fitting new ones. Falls back to fitting on
+    the fly (with a warning) if the artifacts are not found, e.g. the first
+    time this is run before any training has happened.
+    """
+    df = df.copy()
+    df["description"] = df["description"].fillna("")
+
+    drop_cols = [c for c in ["tax", "price_excl_tax", "num_reviews", "product_type",
+                              "availability_text", "upc", "image_url", "page_url",
+                              "crawled_at", "category_id"] if c in df.columns]
+    df.drop(columns=drop_cols, inplace=True)
+
+    encoder_path = ARTIFACT_DIR / "category_encoder.pkl"
+    scaler_path = ARTIFACT_DIR / "scaler.pkl"
+
+    if encoder_path.exists() and scaler_path.exists():
+        with open(encoder_path, "rb") as f:
+            le = pickle.load(f)
+        with open(scaler_path, "rb") as f:
+            scaler = pickle.load(f)
+        # Categories unseen during training fall back to -1 (unknown class)
+        known = set(le.classes_)
+        df["category_encoded"] = df["category"].apply(
+            lambda c: le.transform([c])[0] if c in known else -1
+        )
+        scale_cols = ["price_incl_tax", "stock_count"]
+        df[[f"{c}_scaled" for c in scale_cols]] = scaler.transform(df[scale_cols])
+        print("  ✅ Reused fitted encoder/scaler from outputs/models/ (no re-fit on inference data)")
+    else:
+        print("  ⚠️  No saved encoder/scaler found — fitting on this data as a fallback "
+              "(run the training pipeline first for consistent transformations).")
+        le = LabelEncoder()
+        df["category_encoded"] = le.fit_transform(df["category"])
+        scaler = MinMaxScaler()
+        scale_cols = ["price_incl_tax", "stock_count"]
+        df[[f"{c}_scaled" for c in scale_cols]] = scaler.fit_transform(df[scale_cols])
+
+    df["rating_class"] = (df["rating"] >= 3).astype(int) if "rating" in df.columns else np.nan
+    return df
+
 
 if __name__ == "__main__":
     df = load_books()
