@@ -138,29 +138,29 @@ GitHub Actions runs on every push to `main`:
 Project_P3/
 ├── database/
 │   ├── books_raw.csv
-│   └── dataset.db                  ← now also has a `predictions` table
+│   └── dataset.db                  
 ├── scripts/
 │   ├── database_connection.py
 │   ├── import_to_db.py
 │   ├── load_data.py
-│   ├── preprocess.py                ← now also saves encoder/scaler + preprocess_inference()
-│   ├── feature_engineering.py       ← now also saves medians + engineer_features_inference()
-│   ├── **split_data.py**            ← train/val/test split (70/15/15, stratified)
-│   ├── **train_model.py**           ← Section 1 & 2: model selection, training, evaluation
-│   ├── **make_predictions.py**      ← Section 3: prediction pipeline (load model, predict)
-│   ├── **save_predictions.py**      ← Section 3: writes predictions to the database
-│   └── **mlflow_train.py**          ← Section 4 (bonus): MLflow-tracked training
+│   ├── preprocess.py                
+│   ├── feature_engineering.py       
+│   ├── **split_data.py**            
+│   ├── **train_model.py**           
+│   ├── **make_predictions.py**      
+│   ├── **save_predictions.py**      
+│   └── **mlflow_train.py**          
 ├── outputs/
 │   ├── ... (Phase 2 outputs)
 │   ├── **splits/**{train,val,test}.csv
 │   ├── **models/**best_classifier.pkl, best_regressor.pkl, category_encoder.pkl, scaler.pkl, feature_stats.json
-│   ├── **evaluation_report.json**   ← full model comparison + test metrics
-│   └── **predictions.csv**          ← local snapshot of predictions
-├── **pipeline_train.py**            ← TRAINING pipeline: single-command automation
-├── **pipeline_predict.py**          ← PREDICTION pipeline: single-command automation
-├── .github/workflows/pipeline.yml   ← CI/CD, now runs both Phase 3 pipelines
-├── **video_link.txt**               ← Google Drive links for final video + slides
-├── pipeline.py                      ← Phase 2 pipeline (unchanged)
+│   ├── **evaluation_report.json**   
+│   └── **predictions.csv**          
+├── **pipeline_train.py**            
+├── **pipeline_predict.py**          
+├── .github/workflows/pipeline.yml   
+├── **video_link.txt**               
+├── pipeline.py                      
 ├── requirements.txt
 └── README.md
 ```
@@ -176,7 +176,6 @@ python pipeline_train.py
 # 2) Predict: reuses saved model + preprocessing artifacts, scores data, saves to DB
 python pipeline_predict.py
 
-# (Bonus) MLflow experiment tracking
 pip install mlflow
 python scripts/mlflow_train.py
 mlflow ui   # http://127.0.0.1:5000
